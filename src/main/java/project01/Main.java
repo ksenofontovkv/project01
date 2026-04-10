@@ -1,7 +1,10 @@
 package project01;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -9,8 +12,10 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -29,19 +34,30 @@ public class Main {
             inputFile = new File(args[0]);
         }
         // Чтение файла:
-        List<String> lines = readInputFile(inputFile);
+        List<String> lines = new ArrayList<>(readInputFile(inputFile));
         // Расчёт групп (корзин) с номерами строк, некоторые корзины становятся пустыми, некоторые склеиваются:
         List<List<Integer>> buckets = groupLinesTogether(lines);
         // Обработка вывода результатов в файл групп (корзин):
         showResults(lines, buckets);
     }
 
-    private static List<String> readInputFile(final File f) {
-        try {
-            return Files.readAllLines(f.toPath());
-        } catch (IOException e) {
+    private static Set<String> readInputFile(final File f) {
+        Set<String> lines = new LinkedHashSet<String>();
+        try (final FileReader fileReader = new FileReader(f.getAbsolutePath())) {
+            try (final BufferedReader br = new BufferedReader(fileReader)) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Файл не найден: " + f.getAbsolutePath());
             throw new RuntimeException("Ошибка при чтении файла: " + f.getAbsolutePath(), e);
+        } catch (IOException e) {
+            // we can ignore IOException when closing
+            logger.log(Level.INFO, e.getMessage(), e);
         }
+        return lines;
     }
 
     private static List<List<Integer>> groupLinesTogether(List<String> lines) {
@@ -104,13 +120,11 @@ public class Main {
         if (!bucket.equals(existentBucket)) {
             Integer inBacket = Math.min(bucket, existentBucket);
             Integer outBacket = Math.max(bucket, existentBucket);
-            inWhichBucketLine[inBacket.equals(existentBucket) ? row - 1 : index - 1] =
-                    inBacket.equals(existentBucket) ? existentBucket : bucket;
-
             List<Integer> outRows = buckets.get(outBacket - 1);
             List<Integer> inRowsBacket = buckets.get(inBacket - 1);
             for (Integer backetChild : outRows) {
                 inRowsBacket.add(backetChild);
+                inWhichBucketLine[backetChild - 1] = inBacket;
             }
             buckets.set(outBacket - 1, Collections.emptyList());
         }
